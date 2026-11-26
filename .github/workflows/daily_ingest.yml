@@ -1,0 +1,39 @@
+# Every evening, download today's prices from data.gov.in and commit them to the
+# repo (data/raw/daily/YYYY-MM-DD.csv). Over months this builds your own archive.
+#
+# One-time setup: GitHub repo -> Settings -> Secrets and variables -> Actions ->
+# New repository secret, name DATA_GOV_IN_API_KEY, value = your data.gov.in key.
+# Until the secret exists, the job skips itself.
+name: daily-ingest
+on:
+  schedule:
+    - cron: "30 13 * * *"   # 13:30 UTC = 7:00 pm IST, after most mandis have reported
+  workflow_dispatch: {}      # lets you click "Run workflow" by hand too
+permissions:
+  contents: write            # needed to commit the new CSV
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      DATA_GOV_IN_API_KEY: ${{ secrets.DATA_GOV_IN_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Skip if no API key
+        if: env.DATA_GOV_IN_API_KEY == ''
+        run: echo "No DATA_GOV_IN_API_KEY secret yet; skipping." 
+      - name: Fetch today's prices
+        if: env.DATA_GOV_IN_API_KEY != ''
+        run: |
+          pip install -e .
+          mandi fetch-today
+      - name: Commit the new file
+        if: env.DATA_GOV_IN_API_KEY != ''
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f data/raw/daily/*.csv
+          git diff --cached --quiet || git commit -m "data: daily prices $(date -u +%F)"
+          git push

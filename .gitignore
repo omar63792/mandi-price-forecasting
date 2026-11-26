@@ -1,0 +1,13 @@
+__pycache__/
+*.egg-info/
+.venv/
+data/raw/*
+!data/raw/.gitkeep
+data/*.duckdb
+data/*.duckdb.wal
+reports/
+.ipynb_checkpoints/
+
+# daily API pulls ARE committed by the GitHub Action (small files)
+!data/raw/daily/
+data/sample_raw/
